@@ -1,0 +1,10 @@
+{
+  "name": "lifeops-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "start": "tsx index.ts",
+    "test": "tsx --test tests/voiceInteraction.test.ts"
+  }
+}
