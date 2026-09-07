@@ -81,7 +81,7 @@ export interface AgentMessageResponse {
   error?: string;
 }
 
-const BACKEND_BASE = 'http://localhost:3001';
+const BACKEND_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
 async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   try {
@@ -93,8 +93,12 @@ async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
     return res;
   } catch (netErr) {
     if (input.startsWith('/api')) {
-      const fallbackUrl = `${BACKEND_BASE}${input}`;
-      return await fetch(fallbackUrl, init);
+      try {
+        const fallbackUrl = `${BACKEND_BASE}${input}`;
+        return await fetch(fallbackUrl, init);
+      } catch {
+        throw new Error('Unable to connect to LifeOps backend. Please ensure the backend server is running on port 3001.');
+      }
     }
     throw netErr;
   }
@@ -244,7 +248,11 @@ export async function sendAgentMessage(
     } catch {
       try {
         const errText = await response.text();
-        if (errText) errorMsg = errText;
+        if (errText && !errText.includes('<!DOCTYPE') && !errText.includes('<html')) {
+          errorMsg = errText;
+        } else if (response.status === 504 || response.status === 502) {
+          errorMsg = 'Backend server on port 3001 is unreachable. Please ensure the server is running.';
+        }
       } catch {
         // Fallback to status errorMsg
       }

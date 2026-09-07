@@ -592,14 +592,16 @@ Provide a helpful, concise 1 to 2 sentence explanation for voice text-to-speech 
     const itemsSummary = recommendations.slice(0, 4).map((r, i) => {
       const it = r.item || r;
       if (isBus) {
-        return `Option ${i + 1}: ${it.operator || 'Bus'} (${it.busType || 'Bus'}) — Price: ₹${it.price?.amount || it.price}, Departure: ${it.departureTime || 'Scheduled'}, Rating: ${it.rating || 'N/A'}/5, Seats: ${it.seatsAvailable ?? 'Available'}`;
+        const busPrice = typeof it.price?.amount === 'number' ? it.price.amount : typeof it.price === 'number' ? it.price : 'N/A';
+        return `Option ${i + 1}: ${it.operator || 'Bus'} (${it.busType || 'Bus'}) — Price: ₹${busPrice}, Departure: ${it.departureTime || 'Scheduled'}, Rating: ${it.rating || 'N/A'}/5, Seats: ${it.seatsAvailable ?? 'Available'}`;
       }
       const title = it.title || it.name || 'Product';
-      const price = it.price?.amount || it.price || 'N/A';
+      const numPrice = typeof it.price?.amount === 'number' ? it.price.amount : typeof it.price === 'number' ? it.price : (typeof it.searchPrice === 'number' ? it.searchPrice : 0);
+      const priceDisplay = numPrice > 0 ? `₹${numPrice.toLocaleString('en-IN')}` : 'Market Price';
       const source = it.provider?.name || it.source || 'Verified Merchant';
       const rating = it.rating ? `${it.rating}/5` : 'N/A';
       const specs = it.specifications ? Object.entries(it.specifications).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join(', ') : '';
-      return `Option ${i + 1}: "${title}" — Price: ₹${typeof price === 'number' ? price.toLocaleString('en-IN') : price} on ${source}, Rating: ${rating}. ${specs}`;
+      return `Option ${i + 1}: "${title}" — Price: ${priceDisplay} on ${source}, Rating: ${rating}. ${specs}`;
     }).join('\n');
 
     const prompt = `User request: "${query}"
@@ -860,6 +862,26 @@ CRITICAL RULES:
         if (!keywords.includes('headphone')) keywords.push('headphone');
       } else if (lower.includes('shoe')) {
         if (!keywords.includes('shoes')) keywords.push('shoes');
+      }
+
+      // Generic product phrase extraction fallback if no specific keyword matched
+      if (keywords.length === 0) {
+        let extractedQuery = clean
+          .replace(/^(?:find|search|show|look\s+for|get|recommend|suggest|i\s+want|i\s+need|can\s+you\s+find|buy|purchase|give\s+me)(?:\s+me)?(?:\s+a|\s+an|\s+the|\s+some)?\s+/i, '')
+          .replace(/\b(?:under|below|less\s+than|above|more\s+than|budget\s+of|within|max|around|approx)\s+(?:₹|rs\.?|inr\s*)?[0-9,kK]+\b/gi, '')
+          .replace(/\b(?:best|top|good|cheap|cheapest|affordable|trending|latest|new)\b/gi, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        if (extractedQuery && extractedQuery.length > 1) {
+          keywords.push(extractedQuery);
+          const lowerExt = extractedQuery.toLowerCase();
+          if (lowerExt.includes('shoe') || lowerExt.includes('shirt') || lowerExt.includes('dress') || lowerExt.includes('jeans')) {
+            reqs.category = 'lifestyle';
+          } else if (lowerExt.includes('fan') || lowerExt.includes('chair') || lowerExt.includes('desk') || lowerExt.includes('bottle') || lowerExt.includes('furniture')) {
+            reqs.category = 'home';
+          }
+        }
       }
 
       if (lower.includes('engineering')) keywords.push('engineering');

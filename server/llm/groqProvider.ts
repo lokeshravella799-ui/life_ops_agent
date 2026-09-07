@@ -22,22 +22,32 @@ export class GroqProvider implements LLMProvider {
     }
 
     const targetModel = this.model;
+    const isReasoningModel = targetModel.includes('oss') || targetModel.includes('r1') || targetModel.includes('compound');
+    const tokenLimit = isReasoningModel ? Math.max(options?.max_tokens ?? 800, 800) : (options?.max_tokens ?? 650);
+
     console.log(`[LLM] PROVIDER: ${this.name}`);
     console.log(`[LLM] MODEL: ${targetModel}`);
-    console.log(`[LLM] REQUEST STARTED: tokens=${options?.max_tokens ?? 650}, temp=${options?.temperature ?? 0.3}`);
+    console.log(`[LLM] REQUEST STARTED: tokens=${tokenLimit}, temp=${options?.temperature ?? 0.3}`);
 
     try {
       const groq = new Groq({ apiKey: key, timeout: 25000 });
-      const response = await groq.chat.completions.create({
+      const createParams: any = {
         model: targetModel,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         temperature: options?.temperature ?? 0.3,
-        max_tokens: options?.max_tokens ?? 650,
+        max_tokens: tokenLimit,
         response_format: options?.response_format,
-      });
+      };
+
+      if (isReasoningModel) {
+        // Prevent reasoning output from consuming the token budget
+        createParams.reasoning_format = 'hidden';
+      }
+
+      const response = await groq.chat.completions.create(createParams);
 
       const choice = response.choices?.[0];
-      const content = choice?.message?.content?.trim();
+      const content = choice?.message?.content?.trim() || (choice?.message as any)?.reasoning?.trim();
       if (content) {
         console.log(`[LLM] RESPONSE RECEIVED: length=${content.length} chars`);
         logger.info('[LLM] response received', { model: targetModel, length: content.length });
