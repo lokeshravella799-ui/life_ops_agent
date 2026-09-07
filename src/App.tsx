@@ -44,6 +44,7 @@ import {
   rejectStagedInference,
   fetchConversations,
   fetchConversationById,
+  deleteConversation,
 } from './services/agentApi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, AlertCircle, MapPin } from 'lucide-react';
@@ -854,6 +855,27 @@ export function App() {
     }
   };
 
+  // Delete individual history item
+  const handleDeleteHistoryItem = async (item: HistoryItem) => {
+    try {
+      // Optimistically remove from list immediately
+      setHistoryItems((prev) => prev.filter((h) => h.id !== item.id));
+
+      // If the deleted conversation is the currently active one, reset to clean new chat
+      if (selectedHistoryId === item.id || conversationId === item.id) {
+        handleNewChat();
+      }
+
+      // If persistent conversation on backend, remove it
+      if (!item.id.startsWith('h-pur-') && !item.id.startsWith('h-book-')) {
+        await deleteConversation(item.id);
+      }
+    } catch (err) {
+      console.error('Failed to delete history item:', err);
+      loadConversations();
+    }
+  };
+
   // Handle history item click
   const handleSelectHistoryItem = async (item: HistoryItem) => {
     setSelectedHistoryId(item.id);
@@ -1092,6 +1114,7 @@ export function App() {
         historyItems={historyItems}
         selectedHistoryId={selectedHistoryId}
         onSelectHistoryItem={handleSelectHistoryItem}
+        onDeleteHistoryItem={handleDeleteHistoryItem}
         onNewChat={handleNewChat}
         activeNavTab={activeNavTab}
         onSelectNavTab={handleSelectNavTab}

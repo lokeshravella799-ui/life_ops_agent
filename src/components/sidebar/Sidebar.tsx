@@ -23,6 +23,7 @@ interface SidebarProps {
   historyItems: HistoryItem[];
   selectedHistoryId?: string;
   onSelectHistoryItem: (item: HistoryItem) => void;
+  onDeleteHistoryItem?: (item: HistoryItem) => void;
   onNewChat: () => void;
   activeNavTab: string;
   onSelectNavTab: (tab: string) => void;
@@ -35,6 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   historyItems,
   selectedHistoryId,
   onSelectHistoryItem,
+  onDeleteHistoryItem,
   onNewChat,
   activeNavTab,
   onSelectNavTab,
@@ -176,6 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onSelectHistoryItem(item);
             if (isMobile) onToggle();
           }}
+          onDeleteItem={onDeleteHistoryItem}
         />
       </div>
 
